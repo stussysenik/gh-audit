@@ -4,6 +4,10 @@ Scientific GitHub portfolio security audit and valuation engine. Built in Julia.
 
 Scans your GitHub repos for leaked secrets, estimates monetary value using COCOMO II, classifies what should stay private, and scores every repo from staff-engineer, design-engineer, and AI/ML-researcher perspectives.
 
+## Demo
+
+![GHAudit Demo](demo.gif)
+
 ## What it does
 
 ```
