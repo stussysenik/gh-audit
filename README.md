@@ -13,12 +13,15 @@ Scans your GitHub repos for leaked secrets, estimates monetary value using COCOM
 ║  Repo:      stussysenik/zig-image-carousel          ║
 ║  Language:  Zig                                     ║
 ║  LOC:       4,334 (4.3 KLOC)                        ║
+║  LOC Source: tokei                                  ║
 ║  Findings:  0                                       ║
 ╠══════════════════════════════════════════════════════╣
 ║  COCOMO Effort:     5.4 person-months               ║
 ║  Development Cost:  $165,189                        ║
 ║  Market Score:      62.6/100                        ║
+║  Raw Value:         $121,356                        ║
 ║  Est. Value:        $121,356                        ║
+║  Confidence:        high (95%)                      ║
 ╠══════════════════════════════════════════════════════╣
 ║  Leverage:          $28,001/KLOC                    ║
 ║  Leverage Rank:     Gold                            ║
@@ -120,10 +123,27 @@ market = 0.30 * tech_demand       # Language/framework market demand index
 ### Final Valuation
 
 ```
-V = 0.50 * COCOMO_cost                    # Development replacement cost
-  + 0.30 * (market_score/100 * cost)      # Market opportunity multiplier
-  + 0.20 * (portfolio_score/100 * cost)   # Portfolio/brand premium
+raw_value = 0.50 * COCOMO_cost                    # Development replacement cost
+          + 0.30 * (market_score/100 * cost)      # Market opportunity multiplier
+          + 0.20 * (portfolio_score/100 * cost)   # Portfolio/brand premium
+
+adjusted_value = raw_value * adjustment_factor
 ```
+
+### Confidence + Adjustment
+
+`gh-audit` now reports both `raw_estimated_value_usd` and adjusted `estimated_value_usd`.
+
+- `raw` is the unadjusted replacement-cost style reference
+- `adjusted` discounts shallow `disk_estimate` repos and very large LOC outliers
+- `confidence_label` and `confidence_score` show how much trust to place in the number
+- `loc_source` shows whether LOC came from real `tokei` counting or a disk-usage fallback
+
+This makes the math better in exactly the cases that were overstating totals before:
+
+- vendored / generated / build-heavy trees are excluded from `tokei`
+- shallow repos with only disk-based LOC get lower confidence
+- giant KLOC outliers are attenuated instead of dominating the portfolio total unchecked
 
 ### Leverage Score
 
