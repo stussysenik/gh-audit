@@ -1,0 +1,44 @@
+title = "GHAudit Custom Gitleaks Configuration"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "youtube-api-key"
+description = "YouTube/Google API Key"
+regex = '''AIza[0-9A-Za-z_-]{35}'''
+tags = ["google", "api", "youtube"]
+
+[[rules]]
+id = "apple-team-id"
+description = "Apple Developer Team ID in Xcode project"
+regex = '''DEVELOPMENT_TEAM\s*=\s*[A-Z0-9]{10}'''
+tags = ["apple", "xcode", "signing"]
+
+[[rules]]
+id = "supabase-jwt"
+description = "Supabase JWT / anon key"
+regex = '''eyJ[a-zA-Z0-9_-]{100,}'''
+tags = ["supabase", "jwt"]
+
+[[rules]]
+id = "slack-webhook"
+description = "Slack Webhook URL"
+regex = '''hooks\.slack\.com/services/T[A-Z0-9]+/B[A-Z0-9]+/[a-zA-Z0-9]+'''
+tags = ["slack", "webhook"]
+
+[[rules]]
+id = "generic-api-key-assignment"
+description = "Generic API key assignment"
+regex = '''(?i)(api[_-]?key|api[_-]?secret|access[_-]?token)\s*[=:]\s*['"][a-zA-Z0-9_\-]{20,}['"]'''
+tags = ["generic", "api-key"]
+
+[allowlist]
+paths = [
+    '''\.env\.example$''',
+    '''\.env\.defaults$''',
+    '''\.env\.sample$''',
+    '''node_modules/''',
+    '''vendor/''',
+    '''\.git/'''
+]

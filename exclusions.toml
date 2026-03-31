@@ -1,0 +1,48 @@
+# Repos to force-exclude from publishing (NDA / sensitive)
+[force_private]
+repos = [
+    "polymarket-bot",
+    "cc-config",
+    "cc-setup",
+    "codex-claude-config",
+    "engineering-journal-universal",
+    "daily",
+    "nvim-portable",
+]
+
+# Repos where user decides
+[user_decides]
+repos = [
+    "mengxuanzou.com",
+    "outlook-exodus",
+    "financial-dashboard-plaid",
+]
+
+# File patterns that indicate secrets
+[sensitive_files]
+critical = [
+    ".env",
+    ".env.local",
+    ".env.production",
+    ".env.development",
+    "credentials.json",
+    "serviceAccountKey.json",
+    "config/master.key",
+]
+
+high = [
+    "*.pem",
+    "*.key",
+    "*.p12",
+    "*.pfx",
+    "*.jks",
+    "id_rsa",
+    "id_ed25519",
+]
+
+medium = [
+    "*.sqlite",
+    "*.db",
+    ".env.test",
+    "docker-compose.override.yml",
+]
