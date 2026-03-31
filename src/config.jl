@@ -123,6 +123,36 @@ const W_COCOMO = 0.50      # Development cost basis
 const W_MARKET = 0.30      # Market opportunity
 const W_PORTFOLIO = 0.20   # Portfolio/brand value
 
+# --- LOC estimation / outlier controls ---
+const DISK_ESTIMATE_BYTES_PER_LOC = 30
+const TOKEI_EXCLUDE_PATHS = [
+    ".git",
+    "node_modules",
+    "dist",
+    "build",
+    ".next",
+    ".nuxt",
+    "coverage",
+    "vendor",
+    "Pods",
+    ".dart_tool",
+    ".gradle",
+    "DerivedData",
+    "target",
+    "tmp",
+    "out",
+    "__pycache__",
+    ".cache",
+    ".venv",
+    "venv",
+]
+const LARGE_REPO_SOFT_KLOC = 250.0
+const LARGE_REPO_HARD_KLOC = 1000.0
+const SHALLOW_OUTLIER_MAX_DISCOUNT = 0.75
+const DEEP_SCAN_OUTLIER_MAX_DISCOUNT = 0.30
+const DISK_ESTIMATE_BASE_DISCOUNT = 0.80
+const MIN_ADJUSTMENT_FACTOR = 0.20
+
 # --- Portfolio perspective weights ---
 const W_STAFF_ENG = 0.40
 const W_DESIGN_ENG = 0.30

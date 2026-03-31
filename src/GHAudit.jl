@@ -102,6 +102,7 @@ function run_full_audit(owner::String;
     # Only deep-scan repos flagged SCAN_DEEP (not REVIEW — those are minor)
     repos_to_scan = deep
     all_findings = Dict{String, Vector{Finding}}()
+    scan_names = Set{String}()
 
     if !isempty(repos_to_scan)
         @info "🔬 Phase 2: Deep scanning $(length(repos_to_scan)) repos..."
@@ -135,25 +136,23 @@ function run_full_audit(owner::String;
         tr = findfirst(t -> t.name == repo.name, triage_results)
         triage = isnothing(tr) ? TriageResult(name=repo.name) : triage_results[tr]
 
+        deep_scanned = repo.name in scan_names
+
         report = RepoReport(
             name = repo.name,
             triage = triage,
             findings = get(all_findings, repo.name, Finding[]),
             language = repo.language,
             disk_kb = repo.disk_kb,
+            deep_scanned = deep_scanned,
         )
 
         # LOC estimation from disk size (heuristic when not cloned)
-        # ~10 bytes per line average for source code, disk_kb includes git objects
-        estimated_loc = max(1, repo.disk_kb * 1024 ÷ 30)
+        estimated_loc = estimate_loc_from_disk_kb(repo.disk_kb)
         report.loc = estimated_loc
         kloc = estimated_loc / 1000.0
 
-        # COCOMO II valuation
         lang = isempty(repo.language) ? "JavaScript" : repo.language
-        effort = calculate_effort(kloc, lang)
-        rate = Config.get_rate_tier(lang, repo.description)
-        cost = calculate_cost(effort, rate)
 
         # Market scoring
         tree = triage.flags  # Use triage flags as proxy for file tree
@@ -169,29 +168,14 @@ function run_full_audit(owner::String;
                     Config.W_DESIGN_ENG * perspectives.design_engineer +
                     Config.W_AI_ML * perspectives.ai_ml_researcher
 
-        # Final weighted valuation
-        estimated_value = Config.W_COCOMO * cost +
-                         Config.W_MARKET * (market / 100.0 * cost) +
-                         Config.W_PORTFOLIO * (portfolio / 100.0 * cost)
-
-        # Leverage score: value per KLOC — diamonds create max value from minimal code
-        leverage = kloc > 0.01 ? estimated_value / kloc : 0.0
-        leverage_rank = if leverage > 50000; "Diamond"
-            elseif leverage > 20000; "Gold"
-            elseif leverage > 10000; "Silver"
-            elseif leverage > 5000; "Bronze"
-            else "Raw"
-        end
-
-        report.valuation = Valuation(
-            kloc = kloc,
-            cocomo_effort_pm = effort,
-            cocomo_cost_usd = cost,
-            market_score = market,
-            portfolio_score = portfolio,
-            estimated_value_usd = estimated_value,
-            leverage_score = leverage,
-            leverage_rank = leverage_rank,
+        report.valuation = build_valuation(
+            kloc,
+            lang,
+            repo.description,
+            market,
+            portfolio;
+            deep_scanned = deep_scanned,
+            loc_source = "disk_estimate",
         )
         report.perspectives = perspectives
 
@@ -222,6 +206,8 @@ function run_full_audit(owner::String;
         total_findings = sum(r -> length(r.findings), reports),
         critical_count = sum(r -> count(f -> f.severity == CRITICAL, r.findings), reports),
         total_portfolio_value_usd = sum(r -> r.valuation.estimated_value_usd, reports),
+        raw_total_portfolio_value_usd = sum(r -> r.valuation.raw_estimated_value_usd, reports),
+        average_confidence_score = isempty(reports) ? 0.0 : mean(r -> r.valuation.confidence_score, reports),
         repos = reports,
     )
 
@@ -254,7 +240,7 @@ function run_full_audit(owner::String;
     write_markdown_report(summary, md_path; graph_summary, risk_summary)
 
     @info "✅ Audit complete!" json=json_path markdown=md_path
-    @info "Portfolio value: \$$(round(summary.total_portfolio_value_usd, digits=2))"
+    @info "Adjusted portfolio value: \$$(round(summary.total_portfolio_value_usd, digits=2))" raw="\$$(round(summary.raw_total_portfolio_value_usd, digits=2))" confidence=round(summary.average_confidence_score * 100, digits=1)
     @info "$(summary.safe_count) safe | $(summary.needs_fixes_count) need fixes | $(summary.too_sensitive_count) too sensitive | $(summary.nda_count) NDA"
 
     return summary

@@ -219,8 +219,11 @@ function run_appraise_cmd(parsed)
     findings = Finding[]
     loc_total = 0
     loc_by_lang = Dict{String,Int}()
+    loc_source = "disk_estimate"
+    deep_scanned = false
 
     if GitHub.clone_repo(owner, name, clone_path)
+        deep_scanned = true
         # Run gitleaks
         @info "Running gitleaks..."
         scan_findings = scan_repo(clone_path, config)
@@ -230,38 +233,35 @@ function run_appraise_cmd(parsed)
         @info "Counting lines of code..."
         try
             loc_total, loc_by_lang = count_loc_tokei(clone_path)
+            loc_source = "tokei"
         catch
-            loc_total = max(1, repo.disk_kb * 1024 ÷ 30)
+            loc_total = estimate_loc_from_disk_kb(repo.disk_kb)
         end
 
         # Clean up
         rm(clone_path; recursive=true, force=true)
     else
         @warn "Clone failed, using disk estimate for LOC"
-        loc_total = max(1, repo.disk_kb * 1024 ÷ 30)
+        loc_total = estimate_loc_from_disk_kb(repo.disk_kb)
     end
 
     # Valuate
     lang = isempty(repo.language) ? "JavaScript" : repo.language
     kloc = loc_total / 1000.0
-    effort = calculate_effort(kloc, lang)
-    rate = Config.get_rate_tier(lang, repo.description)
-    cost = calculate_cost(effort, rate)
     market = calculate_market_score(lang, name, repo.description, String[], loc_total)
     perspectives = calculate_perspectives(String[], loc_total, lang, name, repo.description, length(findings))
     portfolio = Config.W_STAFF_ENG * perspectives.staff_engineer +
                 Config.W_DESIGN_ENG * perspectives.design_engineer +
                 Config.W_AI_ML * perspectives.ai_ml_researcher
-    estimated_value = Config.W_COCOMO * cost +
-                     Config.W_MARKET * (market / 100.0 * cost) +
-                     Config.W_PORTFOLIO * (portfolio / 100.0 * cost)
-    leverage = kloc > 0.01 ? estimated_value / kloc : 0.0
-    leverage_rank = if leverage > 50000; "Diamond"
-        elseif leverage > 20000; "Gold"
-        elseif leverage > 10000; "Silver"
-        elseif leverage > 5000; "Bronze"
-        else "Raw"
-    end
+    valuation = build_valuation(
+        kloc,
+        lang,
+        repo.description,
+        market,
+        portfolio;
+        deep_scanned = deep_scanned,
+        loc_source = loc_source,
+    )
 
     # Print scorecard
     println()
@@ -271,21 +271,28 @@ function run_appraise_cmd(parsed)
     println("║  Repo:      $owner/$name")
     println("║  Language:  $lang")
     println("║  LOC:       $(loc_total) ($(round(kloc, digits=1)) KLOC)")
+    println("║  LOC Source: $loc_source")
     println("║  Findings:  $(length(findings))")
     println("╠══════════════════════════════════════════════════════╣")
-    println("║  COCOMO Effort:     $(round(effort, digits=1)) person-months")
-    println("║  Development Cost:  \$$(round(Int, cost))")
+    println("║  COCOMO Effort:     $(round(valuation.cocomo_effort_pm, digits=1)) person-months")
+    println("║  Development Cost:  \$$(round(Int, valuation.cocomo_cost_usd))")
     println("║  Market Score:      $(round(market, digits=1))/100")
     println("║  Portfolio Score:   $(round(portfolio, digits=1))/100")
-    println("║  Est. Value:        \$$(round(Int, estimated_value))")
+    println("║  Raw Value:         \$$(round(Int, valuation.raw_estimated_value_usd))")
+    println("║  Est. Value:        \$$(round(Int, valuation.estimated_value_usd))")
+    println("║  Confidence:        $(valuation.confidence_label) ($(round(valuation.confidence_score * 100, digits=0))%)")
     println("╠══════════════════════════════════════════════════════╣")
-    println("║  Leverage:          \$$(round(Int, leverage))/KLOC")
-    println("║  Leverage Rank:     $leverage_rank")
+    println("║  Leverage:          \$$(round(Int, valuation.leverage_score))/KLOC")
+    println("║  Leverage Rank:     $(valuation.leverage_rank)")
     println("╠══════════════════════════════════════════════════════╣")
     println("║  Staff Engineer:    $(round(perspectives.staff_engineer, digits=1))/100")
     println("║  Design Engineer:   $(round(perspectives.design_engineer, digits=1))/100")
     println("║  AI/ML Researcher:  $(round(perspectives.ai_ml_researcher, digits=1))/100")
     println("╚══════════════════════════════════════════════════════╝")
+
+    if !isempty(valuation.warning_flags)
+        println("\n⚠️  Valuation flags: $(join(valuation.warning_flags, ", "))")
+    end
 
     if !isempty(findings)
         println("\n⚠️  Security Findings:")

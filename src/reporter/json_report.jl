@@ -62,7 +62,16 @@ function _valuation_to_dict(v::Valuation)
     Dict{String,Any}(
         "kloc" => v.kloc, "cocomo_effort_pm" => v.cocomo_effort_pm,
         "cocomo_cost_usd" => v.cocomo_cost_usd, "market_score" => v.market_score,
-        "portfolio_score" => v.portfolio_score, "estimated_value_usd" => v.estimated_value_usd,
+        "portfolio_score" => v.portfolio_score,
+        "raw_estimated_value_usd" => v.raw_estimated_value_usd,
+        "estimated_value_usd" => v.estimated_value_usd,
+        "adjustment_factor" => v.adjustment_factor,
+        "leverage_score" => v.leverage_score,
+        "leverage_rank" => v.leverage_rank,
+        "confidence_score" => v.confidence_score,
+        "confidence_label" => v.confidence_label,
+        "loc_source" => v.loc_source,
+        "warning_flags" => v.warning_flags,
     )
 end
 
@@ -94,6 +103,8 @@ function _summary_to_dict(s::AuditSummary)
         "too_sensitive_count" => s.too_sensitive_count, "nda_count" => s.nda_count,
         "total_findings" => s.total_findings, "critical_count" => s.critical_count,
         "total_portfolio_value_usd" => s.total_portfolio_value_usd,
+        "raw_total_portfolio_value_usd" => s.raw_total_portfolio_value_usd,
+        "average_confidence_score" => s.average_confidence_score,
         "repos" => [_repo_to_dict(r) for r in s.repos],
     )
 end

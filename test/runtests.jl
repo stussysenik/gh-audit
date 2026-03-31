@@ -62,6 +62,14 @@ using .GHAudit: Finding, Valuation, RepoReport, Perspectives,
 
         # 0 KLOC edge case
         @test GHAudit.calculate_effort(0.0, "Python") == 0.0
+
+        @test GHAudit.estimate_loc_from_disk_kb(30) == 1024
+
+        valuation = GHAudit.build_valuation(600.0, "Python", "", 80.0, 70.0; deep_scanned=false, loc_source="disk_estimate")
+        @test valuation.raw_estimated_value_usd > valuation.estimated_value_usd
+        @test valuation.adjustment_factor < 1.0
+        @test valuation.confidence_label in ("low", "very_low")
+        @test "disk_loc_estimate" in valuation.warning_flags
     end
 
     @testset "Market Scoring" begin

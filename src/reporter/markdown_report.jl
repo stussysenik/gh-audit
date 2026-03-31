@@ -77,7 +77,9 @@ function _write_executive_summary(io::IO, summary::AuditSummary)
     println(io, "| Needs Fixes | $(summary.needs_fixes_count) |")
     println(io, "| Too Sensitive | $(summary.too_sensitive_count) |")
     println(io, "| NDA Required | $(summary.nda_count) |")
-    println(io, "| Total Portfolio Value | $(_fmt_usd(summary.total_portfolio_value_usd)) |")
+    println(io, "| Adjusted Portfolio Value | $(_fmt_usd(summary.total_portfolio_value_usd)) |")
+    println(io, "| Raw Portfolio Value | $(_fmt_usd(summary.raw_total_portfolio_value_usd)) |")
+    println(io, "| Average Valuation Confidence | $(_fmt_score(summary.average_confidence_score * 100))% |")
     println(io, "| Critical Findings | $(summary.critical_count) |")
     println(io, "| Total Findings | $(summary.total_findings) |")
     println(io)
@@ -95,19 +97,20 @@ function _write_valuation_table(io::IO, summary::AuditSummary)
     end
 
     # Build the data matrix
-    header = ["Repo", "Language", "LOC", "COCOMO Cost", "Market Score",
-              "Portfolio Score", "Est. Value", "Classification"]
+    header = ["Repo", "Language", "LOC", "Source", "Confidence",
+              "COCOMO Cost", "Adj. Value", "Raw Value", "Classification"]
 
     data = Matrix{String}(undef, length(repos), length(header))
     for (i, r) in enumerate(repos)
         data[i, 1] = r.name
         data[i, 2] = isempty(r.language) ? "-" : r.language
         data[i, 3] = _fmt_loc(r.loc)
-        data[i, 4] = _fmt_usd(r.valuation.cocomo_cost_usd)
-        data[i, 5] = _fmt_score(r.valuation.market_score)
-        data[i, 6] = _fmt_score(r.valuation.portfolio_score)
+        data[i, 4] = isempty(r.valuation.loc_source) ? "-" : r.valuation.loc_source
+        data[i, 5] = isempty(r.valuation.confidence_label) ? "-" : r.valuation.confidence_label
+        data[i, 6] = _fmt_usd(r.valuation.cocomo_cost_usd)
         data[i, 7] = _fmt_usd(r.valuation.estimated_value_usd)
-        data[i, 8] = _classification_label(r.classification)
+        data[i, 8] = _fmt_usd(r.valuation.raw_estimated_value_usd)
+        data[i, 9] = _classification_label(r.classification)
     end
 
     # Write markdown table manually (PrettyTables v3 API changed)

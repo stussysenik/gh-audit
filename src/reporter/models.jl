@@ -36,9 +36,15 @@ Base.@kwdef struct Valuation
     cocomo_cost_usd::Float64 = 0.0      # Development cost estimate
     market_score::Float64 = 0.0         # 0-100
     portfolio_score::Float64 = 0.0      # 0-100
-    estimated_value_usd::Float64 = 0.0  # Weighted final valuation
+    raw_estimated_value_usd::Float64 = 0.0
+    estimated_value_usd::Float64 = 0.0  # Adjusted final valuation
+    adjustment_factor::Float64 = 1.0
     leverage_score::Float64 = 0.0       # Value per KLOC — higher = more efficient value creation
     leverage_rank::String = ""          # "Diamond", "Gold", "Silver", "Bronze", "Raw"
+    confidence_score::Float64 = 0.0
+    confidence_label::String = ""
+    loc_source::String = ""
+    warning_flags::Vector{String} = String[]
 end
 
 """Multi-perspective quality assessment."""
@@ -94,6 +100,8 @@ Base.@kwdef mutable struct AuditSummary
     total_findings::Int = 0
     critical_count::Int = 0
     total_portfolio_value_usd::Float64 = 0.0
+    raw_total_portfolio_value_usd::Float64 = 0.0
+    average_confidence_score::Float64 = 0.0
     repos::Vector{RepoReport} = RepoReport[]
 end
 
